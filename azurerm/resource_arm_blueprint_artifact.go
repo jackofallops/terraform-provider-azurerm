@@ -3,8 +3,8 @@ package azurerm
 import (
 	"fmt"
 	"github.com/Azure/azure-sdk-for-go/services/preview/blueprint/mgmt/2018-11-01-preview/blueprint"
-	"github.com/hashicorp/terraform/helper/schema"
-	"github.com/hashicorp/terraform/helper/validation"
+	"github.com/hashicorp/terraform-plugin-sdk/helper/schema"
+	"github.com/hashicorp/terraform-plugin-sdk/helper/validation"
 	"github.com/terraform-providers/terraform-provider-azurerm/azurerm/helpers/validate"
 	"net/http"
 )
@@ -169,7 +169,7 @@ func resourceArmBlueprintArtifact() *schema.Resource {
 }
 
 func resourceArmBlueprintArtifactCreateOrUpdate(d *schema.ResourceData, meta interface{}) error {
-	client := meta.(*ArmClient).blueprintArtifact
+	client := meta.(*ArmClient).Blueprint.ArtifactsClient
 	ctx := meta.(*ArmClient).StopContext
 
 	name := d.Get("name").(string)

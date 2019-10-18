@@ -3,8 +3,9 @@ package azurerm
 import (
 	"fmt"
 	"github.com/Azure/azure-sdk-for-go/services/preview/blueprint/mgmt/2018-11-01-preview/blueprint"
-	"github.com/hashicorp/terraform/helper/schema"
-	"github.com/hashicorp/terraform/helper/validation"
+	"github.com/Azure/go-autorest/autorest/date"
+	"github.com/hashicorp/terraform-plugin-sdk/helper/schema"
+	"github.com/hashicorp/terraform-plugin-sdk/helper/validation"
 	"github.com/terraform-providers/terraform-provider-azurerm/azurerm/helpers/azure"
 	"github.com/terraform-providers/terraform-provider-azurerm/azurerm/helpers/validate"
 	"github.com/terraform-providers/terraform-provider-azurerm/azurerm/utils"
@@ -82,7 +83,7 @@ func resourceArmBlueprint() *schema.Resource {
 }
 
 func resourceArmBlueprintCreateOrUpdate(d *schema.ResourceData, meta interface{}) error {
-	client := meta.(*ArmClient).blueprint
+	client := meta.(*ArmClient).Blueprint.BlueprintsClient
 	ctx := meta.(*ArmClient).StopContext
 
 	name := d.Get("name").(string)
@@ -95,13 +96,8 @@ func resourceArmBlueprintCreateOrUpdate(d *schema.ResourceData, meta interface{}
 		Properties: properties,
 		Name:       utils.String(name),
 		Type:       utils.String(bpType),
+		ID:         utils.String(""),
 	}
-
-	log.Printf("[SJDEBUG] Model is: %#v", model)
-	log.Printf("[SJDEBUG] properties are: %#v", model.Properties)
-	log.Printf("[SJDEBUG] Scope is %#v", scope)
-	log.Printf("[SJDEBUG] name is %#v", *model.Name)
-	log.Printf("[SJDEBUG] type is %#v", *model.Type)
 
 	read, err := client.CreateOrUpdate(ctx, scope, name, model)
 
@@ -114,7 +110,7 @@ func resourceArmBlueprintCreateOrUpdate(d *schema.ResourceData, meta interface{}
 }
 
 func resourceArmBlueprintRead(d *schema.ResourceData, meta interface{}) error {
-	client := meta.(*ArmClient).blueprint
+	client := meta.(*ArmClient).Blueprint.BlueprintsClient
 	ctx := meta.(*ArmClient).StopContext
 
 	id, err := azure.ParseAzureResourceID(d.Id())
@@ -146,7 +142,7 @@ func resourceArmBlueprintRead(d *schema.ResourceData, meta interface{}) error {
 }
 
 func resourceArmBlueprintDelete(d *schema.ResourceData, meta interface{}) error {
-	client := meta.(*ArmClient).blueprint
+	client := meta.(*ArmClient).Blueprint.BlueprintsClient
 	ctx := meta.(*ArmClient).StopContext
 
 	scope := d.Get("subscription").(string)
@@ -178,16 +174,13 @@ func expandBlueprintProperties(input []interface{}) *blueprint.Properties {
 		return &emptyProps
 	}
 	p := input[0].(map[string]interface{})
-	log.Printf("[SJDEBUG] p is: %#v", p)
 	ret := blueprint.Properties{}
 
 	if displayName, ok := p["display_name"]; ok {
-		log.Printf("[SJDEBUG] Display name: %#v", displayName)
 		ret.DisplayName = utils.String(displayName.(string))
 	}
 
 	if description, ok := p["description"]; ok {
-		log.Printf("[SJDEBUG] Description: %#v", description)
 		ret.Description = utils.String(description.(string))
 	}
 	if layout, ok := p["layout"]; ok {
@@ -198,6 +191,13 @@ func expandBlueprintProperties(input []interface{}) *blueprint.Properties {
 	if statRaw, ok := p["status"]; ok {
 		status := statRaw.(*blueprint.Status)
 		ret.Status = status
+	} else {
+		epoch := date.Time{}
+		status := blueprint.Status{
+			LastModified: &epoch,
+			TimeCreated:  &epoch,
+		}
+		ret.Status = &status
 	}
 
 	if ts, ok := p["target_scope"]; ok {
@@ -207,7 +207,6 @@ func expandBlueprintProperties(input []interface{}) *blueprint.Properties {
 		case "managementGroup":
 			ret.TargetScope = blueprint.ManagementGroup
 		}
-		log.Printf("[SJDEBUG] targetScope is %#v", ret.TargetScope)
 	}
 	pdm := map[string]*blueprint.ParameterDefinition{}
 
@@ -216,19 +215,17 @@ func expandBlueprintProperties(input []interface{}) *blueprint.Properties {
 			pdm[k] = v
 			log.Printf("[SJDEBUG] params parsed")
 		}
-	} //else {
-	//	ret.Parameters = nil
-	//}
-	if rg, ok := p["resource_groups"]; ok {
+	} else {
+		ret.Parameters = map[string]*blueprint.ParameterDefinition{}
+	}
+	if _, ok := p["resource_groups"]; ok {
 		//todo handle resource groups in  props expansion
-		log.Printf("[SJDEBUG] RG is: %#v", rg)
 		ret.ResourceGroups = map[string]*blueprint.ResourceGroupDefinition{}
 	} else {
 		ret.ResourceGroups = map[string]*blueprint.ResourceGroupDefinition{}
 	}
-	if ver, ok := p["versions"]; ok {
+	if _, ok := p["versions"]; ok {
 		//todo handle versions in props expansion
-		log.Printf("[SJDEBUG] versions are: %#v", ver)
 		ret.Versions = []string{}
 	} else {
 		ret.Versions = []string{}

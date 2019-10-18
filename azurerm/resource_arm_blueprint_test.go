@@ -2,8 +2,8 @@ package azurerm
 
 import (
 	"fmt"
-	"github.com/hashicorp/terraform/helper/resource"
-	"github.com/hashicorp/terraform/terraform"
+	"github.com/hashicorp/terraform-plugin-sdk/helper/resource"
+	"github.com/hashicorp/terraform-plugin-sdk/terraform"
 	"github.com/terraform-providers/terraform-provider-azurerm/azurerm/helpers/tf"
 	"net/http"
 	"testing"
@@ -29,7 +29,7 @@ func TestAccAzureRMBlueprint_basic(t *testing.T) {
 }
 
 func testCheckAzureBlueprintDestroy(s *terraform.State) error {
-	conn := testAccProvider.Meta().(*ArmClient).blueprint
+	conn := testAccProvider.Meta().(*ArmClient).Blueprint.BlueprintsClient
 	ctx := testAccProvider.Meta().(*ArmClient).StopContext
 
 	for _, rs := range s.RootModule().Resources {
@@ -78,7 +78,7 @@ func testCheckAzureBlueprintExists(resourceName string) resource.TestCheckFunc {
 		name := rs.Primary.Attributes["name"]
 		scope := rs.Primary.Attributes["scope"]
 
-		conn := testAccProvider.Meta().(*ArmClient).blueprint
+		conn := testAccProvider.Meta().(*ArmClient).Blueprint.BlueprintsClient
 		ctx := testAccProvider.Meta().(*ArmClient).StopContext
 
 		resp, err := conn.Get(ctx, scope, name)

@@ -3,7 +3,6 @@ package azurerm
 import (
 	"context"
 	"fmt"
-	"github.com/Azure/azure-sdk-for-go/services/preview/blueprint/mgmt/2018-11-01-preview/blueprint"
 	"time"
 
 	"github.com/Azure/go-autorest/autorest/azure"
@@ -17,6 +16,7 @@ import (
 	"github.com/terraform-providers/terraform-provider-azurerm/azurerm/internal/services/authorization"
 	"github.com/terraform-providers/terraform-provider-azurerm/azurerm/internal/services/automation"
 	"github.com/terraform-providers/terraform-provider-azurerm/azurerm/internal/services/batch"
+	"github.com/terraform-providers/terraform-provider-azurerm/azurerm/internal/services/blueprint"
 	"github.com/terraform-providers/terraform-provider-azurerm/azurerm/internal/services/bot"
 	"github.com/terraform-providers/terraform-provider-azurerm/azurerm/internal/services/cdn"
 	"github.com/terraform-providers/terraform-provider-azurerm/azurerm/internal/services/cognitive"
@@ -115,7 +115,7 @@ type ArmClient struct {
 	Frontdoor         *frontdoor.Client
 	Graph             *graph.Client
 	HDInsight         *hdinsight.Client
-	Healthcare       *healthcare.Client
+	Healthcare        *healthcare.Client
 	IoTHub            *iothub.Client
 	KeyVault          *keyvault.Client
 	Kusto             *kusto.Client
@@ -235,6 +235,7 @@ func getArmClient(authConfig *authentication.Config, skipProviderRegistration bo
 	client.Authorization = authorization.BuildClient(o)
 	client.Batch = batch.BuildClient(o)
 	client.Bot = bot.BuildClient(o)
+	client.Blueprint = blueprint.BuildClient(o)
 	client.Cdn = cdn.BuildClient(o)
 	client.Cognitive = cognitive.BuildClient(o)
 	client.Compute = clients.NewComputeClient(o)

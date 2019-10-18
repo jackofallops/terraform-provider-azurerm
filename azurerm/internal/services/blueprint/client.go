@@ -6,18 +6,34 @@ import (
 )
 
 type Client struct {
-	BlueprintsClient  blueprint.BlueprintsClient
-	AssignmentsClient blueprint.AssignmentsClient
+	BlueprintsClient          *blueprint.BlueprintsClient
+	AssignmentsClient         *blueprint.AssignmentsClient
+	ArtifactsClient           *blueprint.ArtifactsClient
+	PublishedArtifactsClient  *blueprint.PublishedArtifactsClient
+	PublishedBlueprintsClient *blueprint.PublishedBlueprintsClient
 }
 
 func BuildClient(o *common.ClientOptions) *Client {
-	c := Client{}
+	BlueprintsClient := blueprint.NewBlueprintsClient()
+	o.ConfigureClient(&BlueprintsClient.Client, o.ResourceManagerAuthorizer)
 
-	c.BlueprintsClient = blueprint.NewBlueprintsClient()
-	o.ConfigureClient(&c.BlueprintsClient.Client, o.ResourceManagerAuthorizer)
+	AssignmentsClient := blueprint.NewAssignmentsClient()
+	o.ConfigureClient(&AssignmentsClient.Client, o.ResourceManagerAuthorizer)
 
-	c.AssignmentsClient = blueprint.NewAssignmentsClient()
-	o.ConfigureClient(&c.AssignmentsClient.Client, o.ResourceManagerAuthorizer)
+	ArtifactsClient := blueprint.NewArtifactsClient()
+	o.ConfigureClient(&ArtifactsClient.Client, o.ResourceManagerAuthorizer)
 
-	return &c
+	PublishedArtifactsClient := blueprint.NewPublishedArtifactsClient()
+	o.ConfigureClient(&PublishedArtifactsClient.Client, o.ResourceManagerAuthorizer)
+
+	PublishedBlueprintsClient := blueprint.NewPublishedBlueprintsClient()
+	o.ConfigureClient(&PublishedBlueprintsClient.Client, o.ResourceManagerAuthorizer)
+
+	return &Client{
+		BlueprintsClient:          &BlueprintsClient,
+		AssignmentsClient:         &AssignmentsClient,
+		ArtifactsClient:           &ArtifactsClient,
+		PublishedArtifactsClient:  &PublishedArtifactsClient,
+		PublishedBlueprintsClient: &PublishedBlueprintsClient,
+	}
 }
