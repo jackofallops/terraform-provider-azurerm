@@ -14,15 +14,15 @@ func TestAccAzureRMBlueprint_basic(t *testing.T) {
 	ri := tf.AccRandTimeInt()
 
 	resource.ParallelTest(t, resource.TestCase{
-		PreCheck:  func() { testAccPreCheck(t) },
-		Providers: testAccProviders,
+		PreCheck:     func() { testAccPreCheck(t) },
+		Providers:    testAccProviders,
 		CheckDestroy: testCheckAzureBlueprintDestroy,
 		Steps: []resource.TestStep{
 			{
 				Config: testAccAzureRMBlueprint_basic_subscription(ri),
 				Check: resource.ComposeTestCheckFunc(
 					testCheckAzureBlueprintExists(resourceName),
-					),
+				),
 			},
 		},
 	})
@@ -36,16 +36,16 @@ func testCheckAzureBlueprintDestroy(s *terraform.State) error {
 		if rs.Type != "azurerm_blueprint" {
 			continue
 		}
-	name := rs.Primary.Attributes["name"]
-	scope := rs.Primary.Attributes["scope"]
+		name := rs.Primary.Attributes["name"]
+		scope := rs.Primary.Attributes["scope"]
 
-	resp, err := conn.Get(ctx, scope, name)
-	if err != nil {
-		return err
-	}
-	if resp.StatusCode != http.StatusNotFound {
-		fmt.Errorf("Blueprint still exists\n%v", resp)
-	}
+		resp, err := conn.Get(ctx, scope, name)
+		if err != nil {
+			return err
+		}
+		if resp.StatusCode != http.StatusNotFound {
+			fmt.Errorf("Blueprint still exists\n%v", resp)
+		}
 
 	}
 	return nil
@@ -56,10 +56,16 @@ func testAccAzureRMBlueprint_basic_subscription(ri int) string {
 data "azurerm_subscription" "current" {}
 
 resource "azurerm_blueprint" "test" {
-  name        = "acctestbp-%d"
-  scope       = data.azurerm_subscription.current.id
-  description = "accTest blueprint %d"
-`, ri, ri )
+  name  = "acctestbp-%d"
+  scope = data.azurerm_subscription.current.id
+  type  = ""
+  properties {
+    description  = "accTest blueprint %d"
+    display_name = "accTest blueprint"
+    target_scope = "subscription"
+  }
+}
+`, ri, ri)
 }
 
 func testCheckAzureBlueprintExists(resourceName string) resource.TestCheckFunc {
