@@ -174,7 +174,8 @@ func parseBlueprintScope(input string) (scope string) {
 
 func expandBlueprintProperties(input []interface{}) *blueprint.Properties {
 	if len(input) == 0 {
-		return nil
+		emptyProps := blueprint.Properties{}
+		return &emptyProps
 	}
 	p := input[0].(map[string]interface{})
 	log.Printf("[SJDEBUG] p is: %#v", p)
@@ -220,14 +221,14 @@ func expandBlueprintProperties(input []interface{}) *blueprint.Properties {
 	//}
 	if rg, ok := p["resource_groups"]; ok {
 		//todo handle resource groups in  props expansion
-		log.Printf("RG is: %#v", rg)
+		log.Printf("[SJDEBUG] RG is: %#v", rg)
 		ret.ResourceGroups = map[string]*blueprint.ResourceGroupDefinition{}
 	} else {
 		ret.ResourceGroups = map[string]*blueprint.ResourceGroupDefinition{}
 	}
 	if ver, ok := p["versions"]; ok {
 		//todo handle versions in props expansion
-		log.Printf("versions are: %#v", ver)
+		log.Printf("[SJDEBUG] versions are: %#v", ver)
 		ret.Versions = []string{}
 	} else {
 		ret.Versions = []string{}

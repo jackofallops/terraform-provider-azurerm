@@ -5,6 +5,7 @@ import (
 	"github.com/Azure/azure-sdk-for-go/services/preview/blueprint/mgmt/2018-11-01-preview/blueprint"
 	"github.com/hashicorp/terraform/helper/schema"
 	"github.com/hashicorp/terraform/helper/validation"
+	"github.com/terraform-providers/terraform-provider-azurerm/azurerm/helpers/validate"
 	"net/http"
 )
 
@@ -13,25 +14,25 @@ func resourceArmBlueprintArtifact() *schema.Resource {
 		Create: resourceArmBlueprintArtifactCreateOrUpdate,
 		Update: resourceArmBlueprintArtifactCreateOrUpdate,
 		Delete: resourceArmBlueprintArtifactDelete,
-		Read: resourceArmBlueprintArtifactRead,
+		Read:   resourceArmBlueprintArtifactRead,
 
 		Schema: map[string]*schema.Schema{
 			"name": {
-				Type: schema.TypeString,
+				Type:     schema.TypeString,
 				Required: true,
-				Computed: true,
 			},
 			"scope": {
-				Type: schema.TypeString,
+				Type:     schema.TypeString,
 				Optional: true,
 				// todo Scope validation function
 			},
 			"blueprint_name": {
-				Type: schema.TypeString,
+				Type:     schema.TypeString,
 				Required: true,
 			},
 			"kind": {
-				Type: schema.TypeString,
+				Type:     schema.TypeString,
+				Required: true,
 				ValidateFunc: validation.StringInSlice([]string{
 					string(blueprint.KindArtifact),
 					string(blueprint.KindPolicyAssignment),
@@ -40,114 +41,130 @@ func resourceArmBlueprintArtifact() *schema.Resource {
 				}, true),
 			},
 			"template_artifact": {
-				Type:     schema.TypeSet,
-				Optional: true,
-				ConflictsWith: []string{"policy_assignment_artifact","role_assignment_artifact"},
-				MaxItems: 1,
+				Type:          schema.TypeSet,
+				Optional:      true,
+				ConflictsWith: []string{"policy_assignment_artifact", "role_assignment_artifact"},
+				MaxItems:      1,
 				Elem: &schema.Resource{
 					Schema: map[string]*schema.Schema{
 						"display_name": {
-							Type: schema.TypeString,
+							Type:     schema.TypeString,
 							Required: true,
 						},
 						"description": {
-							Type: schema.TypeString,
+							Type:     schema.TypeString,
 							Required: true,
 						},
 						"depends_on": {
-							Type: schema.TypeSet,
+							Type:     schema.TypeSet,
 							Optional: true,
+							Elem: &schema.Schema{
+								Type:         schema.TypeString,
+								ValidateFunc: validate.NoEmptyStrings,
+							},
 						},
 						"resource_group": {
-							Type: schema.TypeString,
+							Type:     schema.TypeString,
 							Optional: true,
 						},
 						"template": {
-							Type: schema.TypeString,
-							Optional: true,
+							Type:         schema.TypeString,
+							Optional:     true,
 							ValidateFunc: validation.ValidateJsonString,
 						},
 						"parameters": {
-							Type: schema.TypeMap,
+							Type:     schema.TypeMap,
 							Optional: true,
 						},
 					},
 				},
 			},
 			"policy_assignment_artifact": {
-				Type: schema.TypeSet,
-				Optional: true,
+				Type:          schema.TypeSet,
+				Optional:      true,
 				ConflictsWith: []string{"template_artifact"},
-				MaxItems: 1,
+				MaxItems:      1,
 				Elem: &schema.Resource{
 					Schema: map[string]*schema.Schema{
 						"display_name": {
-							Type: schema.TypeString,
+							Type:     schema.TypeString,
 							Required: true,
 						},
 						"description": {
-							Type: schema.TypeString,
+							Type:     schema.TypeString,
 							Required: true,
 						},
 						"depends_on": {
-							Type: schema.TypeSet,
+							Type:     schema.TypeSet,
 							Optional: true,
+							Elem: &schema.Schema{
+								Type:         schema.TypeString,
+								ValidateFunc: validate.NoEmptyStrings,
+							},
 						},
 						"policy_definition_id": {
-							Type: schema.TypeString,
+							Type:     schema.TypeString,
 							Optional: true,
 						},
 						"resource_group": {
-							Type: schema.TypeString,
+							Type:     schema.TypeString,
 							Optional: true,
 						},
 						"parameters": {
-							Type: schema.TypeMap,
+							Type:     schema.TypeMap,
 							Optional: true,
 						},
 					},
 				},
 			},
 			"role_assignment_artifact": {
-				Type: schema.TypeSet,
-				Optional: true,
-				ConflictsWith: []string{"template_artifact","policy_assignment_artifact"},
-				MaxItems: 1,
+				Type:          schema.TypeSet,
+				Optional:      true,
+				ConflictsWith: []string{"template_artifact", "policy_assignment_artifact"},
+				MaxItems:      1,
 				Elem: &schema.Resource{
 					Schema: map[string]*schema.Schema{
 						"display_name": {
-							Type: schema.TypeString,
+							Type:     schema.TypeString,
 							Required: true,
 						},
 						"description": {
-							Type: schema.TypeString,
+							Type:     schema.TypeString,
 							Required: true,
 						},
 						"depends_on": {
-							Type: schema.TypeSet,
+							Type:     schema.TypeSet,
 							Optional: true,
+							Elem: &schema.Schema{
+								Type:         schema.TypeString,
+								ValidateFunc: validate.NoEmptyStrings,
+							},
 						},
-						"Role_definition_id": {
-							Type: schema.TypeString,
+						"role_definition_id": {
+							Type:     schema.TypeString,
 							Optional: true,
 						},
 						"principal_ids": {
-							Type: schema.TypeSet,
+							Type:     schema.TypeSet,
 							Optional: true,
+							// Todo - Look at Elem properly here
+							Elem: &schema.Schema{
+								Type:         schema.TypeString,
+								ValidateFunc: validate.NoEmptyStrings,
+							},
 						},
 						"resource_group": {
-							Type: schema.TypeString,
+							Type:     schema.TypeString,
 							Optional: true,
 						},
 						"parameters": {
-							Type: schema.TypeMap,
+							Type:     schema.TypeMap,
 							Optional: true,
 						},
 					},
 				},
 			},
 		},
-
 	}
 }
 
@@ -160,7 +177,6 @@ func resourceArmBlueprintArtifactCreateOrUpdate(d *schema.ResourceData, meta int
 	blueprintName := d.Get("blueprint_name").(string)
 
 	kind := d.Get("kind")
-
 
 	var artifact blueprint.BasicArtifact
 
@@ -176,7 +192,7 @@ func resourceArmBlueprintArtifactCreateOrUpdate(d *schema.ResourceData, meta int
 			DisplayName: &dName,
 			Description: &desc,
 			// TODO DependsOn
-			Template: template,
+			Template:      template,
 			ResourceGroup: &rg,
 		}
 
@@ -185,7 +201,7 @@ func resourceArmBlueprintArtifactCreateOrUpdate(d *schema.ResourceData, meta int
 		}
 
 		artifact = blueprint.TemplateArtifact{
-			Kind: blueprint.KindTemplate,
+			Kind:                       blueprint.KindTemplate,
 			TemplateArtifactProperties: &tArtifact,
 		}
 
@@ -217,9 +233,9 @@ func expandParameters(d *schema.ResourceData) map[string]*blueprint.ParameterVal
 }
 
 func resourceArmBlueprintArtifactRead(d *schema.ResourceData, meta interface{}) error {
-	return  nil
+	return nil
 }
 
 func resourceArmBlueprintArtifactDelete(d *schema.ResourceData, meta interface{}) error {
-	return  nil
+	return nil
 }
