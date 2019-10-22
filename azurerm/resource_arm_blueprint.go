@@ -70,6 +70,23 @@ func resourceArmBlueprint() *schema.Resource {
 								ValidateFunc: validate.NoEmptyStrings,
 							},
 						},
+						"status": {
+							Type:     schema.TypeSet,
+							Computed: true,
+							Elem: &schema.Resource{
+								Schema: map[string]*schema.Schema{
+									"last_modified": {
+										Type:     schema.TypeString,
+										Computed: true,
+									},
+
+									"time_created": {
+										Type:     schema.TypeString,
+										Computed: true,
+									},
+								},
+							},
+						},
 					},
 				},
 			},
