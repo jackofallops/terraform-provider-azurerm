@@ -3,7 +3,6 @@ package azurerm
 import (
 	"fmt"
 	"github.com/Azure/azure-sdk-for-go/services/preview/blueprint/mgmt/2018-11-01-preview/blueprint"
-	"github.com/Azure/go-autorest/autorest/date"
 	"github.com/hashicorp/terraform-plugin-sdk/helper/schema"
 	"github.com/hashicorp/terraform-plugin-sdk/helper/validation"
 	"github.com/terraform-providers/terraform-provider-azurerm/azurerm/helpers/azure"
@@ -26,10 +25,10 @@ func resourceArmBlueprint() *schema.Resource {
 				Required: true,
 			},
 			"scope": {
-				Type:         schema.TypeString,
-				Required:     true,
-				ValidateFunc: azure.ValidateResourceID,
-				// todo Scope validation function
+				Type:     schema.TypeString,
+				Required: true,
+				// todo Scope validation function to cover managementGroup condition?
+				ValidateFunc: validateBlueprintScope,
 			},
 			"properties": {
 				Type:     schema.TypeList,
@@ -57,14 +56,14 @@ func resourceArmBlueprint() *schema.Resource {
 						},
 						"target_scope": {
 							Type:     schema.TypeString,
-							Optional: true,
+							Required: true,
 							ValidateFunc: validation.StringInSlice([]string{
 								string(blueprint.Subscription),
 								string(blueprint.ManagementGroup),
 							}, false),
 						},
 						"versions": {
-							Type:     schema.TypeSet,
+							Type:     schema.TypeList,
 							Optional: true,
 							Elem: &schema.Schema{
 								Type:         schema.TypeString,
@@ -134,9 +133,9 @@ func resourceArmBlueprintRead(d *schema.ResourceData, meta interface{}) error {
 
 	d.Set("name", resp.Name)
 	d.Set("type", resp.Type)
-	d.Set("display_name", resp.DisplayName)
-	d.Set("description", resp.Description)
-	d.Set("properties.parameters", resp.Properties.Parameters)
+	d.Set("scope", scope)
+	props := flattenBlueprintProperties(resp.Properties)
+	d.Set("properties", props)
 
 	return nil
 }
@@ -145,7 +144,7 @@ func resourceArmBlueprintDelete(d *schema.ResourceData, meta interface{}) error 
 	client := meta.(*ArmClient).Blueprint.BlueprintsClient
 	ctx := meta.(*ArmClient).StopContext
 
-	scope := d.Get("subscription").(string)
+	scope := d.Get("scope").(string)
 	name := d.Get("name").(string)
 	resp, err := client.Delete(ctx, scope, name)
 	if err != nil {
@@ -159,7 +158,7 @@ func resourceArmBlueprintDelete(d *schema.ResourceData, meta interface{}) error 
 
 func parseBlueprintScope(input string) (scope string) {
 	if strings.HasPrefix(input, "/subscriptions") {
-		scope = input[0:52]
+		scope = input[0:51]
 	}
 	if strings.HasPrefix(input, "/providers/Microsoft.Management/managementGroups/") {
 		scope = input[0:86]
@@ -173,7 +172,9 @@ func expandBlueprintProperties(input []interface{}) *blueprint.Properties {
 		emptyProps := blueprint.Properties{}
 		return &emptyProps
 	}
+
 	p := input[0].(map[string]interface{})
+
 	ret := blueprint.Properties{}
 
 	if displayName, ok := p["display_name"]; ok {
@@ -183,21 +184,11 @@ func expandBlueprintProperties(input []interface{}) *blueprint.Properties {
 	if description, ok := p["description"]; ok {
 		ret.Description = utils.String(description.(string))
 	}
+
 	if layout, ok := p["layout"]; ok {
 		ret.Layout = layout
 	} else {
-		ret.Layout = ""
-	}
-	if statRaw, ok := p["status"]; ok {
-		status := statRaw.(*blueprint.Status)
-		ret.Status = status
-	} else {
-		epoch := date.Time{}
-		status := blueprint.Status{
-			LastModified: &epoch,
-			TimeCreated:  &epoch,
-		}
-		ret.Status = &status
+		ret.Layout = map[string]string{}
 	}
 
 	if ts, ok := p["target_scope"]; ok {
@@ -208,28 +199,70 @@ func expandBlueprintProperties(input []interface{}) *blueprint.Properties {
 			ret.TargetScope = blueprint.ManagementGroup
 		}
 	}
+
 	pdm := map[string]*blueprint.ParameterDefinition{}
 
 	if params, ok := p["parameters"].(map[string]*blueprint.ParameterDefinition); ok {
 		for k, v := range params {
 			pdm[k] = v
-			log.Printf("[SJDEBUG] params parsed")
 		}
 	} else {
 		ret.Parameters = map[string]*blueprint.ParameterDefinition{}
 	}
+
 	if _, ok := p["resource_groups"]; ok {
 		//todo handle resource groups in  props expansion
 		ret.ResourceGroups = map[string]*blueprint.ResourceGroupDefinition{}
 	} else {
 		ret.ResourceGroups = map[string]*blueprint.ResourceGroupDefinition{}
 	}
+
 	if _, ok := p["versions"]; ok {
-		//todo handle versions in props expansion
-		ret.Versions = []string{}
+		// todo - handle Versions object when I figure out structure
+		ret.Versions = map[string]string{}
 	} else {
-		ret.Versions = []string{}
+		ret.Versions = map[string]string{}
 	}
-	log.Printf("Ret value: %#v", ret)
+
 	return &ret
+}
+
+func flattenBlueprintProperties(blueprintProperties *blueprint.Properties) []interface{} {
+
+	props := make(map[string]interface{})
+
+	props["display_name"] = &blueprintProperties.DisplayName
+	props["description"] = &blueprintProperties.Description
+	props["target_scope"] = string(blueprintProperties.TargetScope)
+	props["resource_group"] = &blueprintProperties.ResourceGroups
+	props["parameters"] = &blueprintProperties.Parameters
+
+	return []interface{}{props}
+}
+
+func validateBlueprintScope(i interface{}, k string) (warnings []string, errors []error) {
+	input := i.(string)
+
+	if strings.HasPrefix(input, "/subscription") {
+		_, err := azure.ValidateResourceID(i, input)
+		if err != nil {
+			errors = append(errors, fmt.Errorf("Subscription specified is not a valid Resource ID: %q", k))
+		}
+	} else if strings.HasPrefix(input, "/providers/Microsoft.Management/managementGroups/") {
+		input = strings.TrimPrefix(input, "/")
+		input = strings.TrimSuffix(input, "/")
+		components := strings.Split(input, "/")
+
+		if len(components) != 4 {
+			errors = append(errors, fmt.Errorf("Invalid management group path, should contain 4 elements not %q", len(components)))
+		}
+		_, err := validate.UUID(components[3], input)
+		if err != nil {
+			errors = append(errors, fmt.Errorf("Management group ID not a valid uuid: %q", components[3]))
+		}
+	} else {
+		errors = append(errors, fmt.Errorf("Invalid scope, should be a subscription resource ID or Management Group path: %q", k))
+	}
+
+	return warnings, errors
 }
