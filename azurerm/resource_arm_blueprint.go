@@ -168,17 +168,6 @@ func resourceArmBlueprintDelete(d *schema.ResourceData, meta interface{}) error 
 	return nil
 }
 
-func parseBlueprintScope(input string) (scope string) {
-	if strings.HasPrefix(input, "/subscriptions") {
-		scope = input[0:51]
-	}
-	if strings.HasPrefix(input, "/providers/Microsoft.Management/managementGroups/") {
-		scope = input[0:86]
-	}
-
-	return scope
-}
-
 func expandBlueprintProperties(input []interface{}) *blueprint.Properties {
 	if len(input) == 0 {
 		emptyProps := blueprint.Properties{}
