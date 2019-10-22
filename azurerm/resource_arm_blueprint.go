@@ -112,14 +112,9 @@ func resourceArmBlueprintRead(d *schema.ResourceData, meta interface{}) error {
 	client := meta.(*ArmClient).Blueprint.BlueprintsClient
 	ctx := meta.(*ArmClient).StopContext
 
-	id, err := azure.ParseAzureResourceID(d.Id())
-
-	if err != nil {
-		return err
-	}
-
-	scope := parseBlueprintScope(d.Id())
-	name := id.Path["blueprints"]
+	// Can't use ParseAzureResourceID as normal, as management group id value doesn't start "/subscriptions"
+	scope := d.Get("scope").(string)
+	name := d.Get("name").(string)
 
 	resp, err := client.Get(ctx, scope, name)
 	if err != nil {
