@@ -24,14 +24,14 @@ func TestAccAzureRMBlueprint_basic(t *testing.T) {
 					testCheckAzureBlueprintExists("azurerm_blueprint.test_subscription"),
 				),
 			},
-			// Following test will fail, as `managementGroup` fails an enum check in the API despite being in the spec
+			// Following test should have target_scope as `managementGroup` but fails an enum check in the API despite being in the spec
 			// https://github.com/Azure/azure-rest-api-specs/blob/282efa7dd8301ba615d8741f740f1ed7f500fed1/specification/blueprint/resource-manager/Microsoft.Blueprint/preview/2018-11-01-preview/blueprintDefinition.json#L835
-			//{
-			//	Config: testAccAzureRMBlueprint_basic_managementGroup(ri),
-			//	Check: resource.ComposeTestCheckFunc(
-			//		testCheckAzureBlueprintExists("azurerm_blueprint.test_managementGroup"),
-			//	),
-			//},
+			{
+				Config: testAccAzureRMBlueprint_basic_managementGroup(ri),
+				Check: resource.ComposeTestCheckFunc(
+					testCheckAzureBlueprintExists("azurerm_blueprint.test_managementGroup"),
+				),
+			},
 		},
 	})
 }
@@ -102,19 +102,19 @@ resource "azurerm_blueprint" "test_subscription" {
 `, ri, ri)
 }
 
-//func testAccAzureRMBlueprint_basic_managementGroup(ri int) string {
-//	return fmt.Sprintf(`
-//data "azurerm_client_config" "test" {}
-//
-//resource "azurerm_blueprint" "test_managementGroup" {
-//  name  = "acctestbp-mg-%d"
-//  scope = join("",["/providers/Microsoft.Management/managementGroups/",data.azurerm_client_config.test.tenant_id])
-//  type  = "Microsoft.Blueprint/blueprints"
-//  properties {
-//    description  = "accTest blueprint %d"
-//    display_name = "accTest blueprint"
-//	target_scope = "managementGroup"
-//  }
-//}
-//`, ri, ri)
-//}
+func testAccAzureRMBlueprint_basic_managementGroup(ri int) string {
+	return fmt.Sprintf(`
+data "azurerm_client_config" "test" {}
+
+resource "azurerm_blueprint" "test_managementGroup" {
+ name  = "acctestbp-mg-%d"
+ scope = join("",["/providers/Microsoft.Management/managementGroups/",data.azurerm_client_config.test.tenant_id])
+ type  = "Microsoft.Blueprint/blueprints"
+ properties {
+   description  = "accTest blueprint %d"
+   display_name = "accTest blueprint"
+   target_scope = "subscription"
+ }
+}
+`, ri, ri)
+}
