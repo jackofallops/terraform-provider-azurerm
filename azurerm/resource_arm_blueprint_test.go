@@ -2,6 +2,7 @@ package azurerm
 
 import (
 	"fmt"
+	"github.com/Azure/azure-sdk-for-go/services/preview/blueprint/mgmt/2018-11-01-preview/blueprint"
 	"github.com/hashicorp/terraform-plugin-sdk/helper/resource"
 	"github.com/hashicorp/terraform-plugin-sdk/terraform"
 	"github.com/terraform-providers/terraform-provider-azurerm/azurerm/helpers/tf"
@@ -12,16 +13,21 @@ import (
 
 func TestAccAzureRMBlueprint_basic(t *testing.T) {
 	ri := tf.AccRandTimeInt()
+	subscriptionResourceName := "azurerm_blueprint.test_subscription"
+	managementGroupResourceName := "azurerm_blueprint.test_subscription"
 
 	resource.ParallelTest(t, resource.TestCase{
 		PreCheck:     func() { testAccPreCheck(t) },
 		Providers:    testAccProviders,
-		CheckDestroy: testCheckAzureBlueprintDestroy,
+		CheckDestroy: testCheckAzureRMBlueprintDestroy,
 		Steps: []resource.TestStep{
 			{
 				Config: testAccAzureRMBlueprint_basic_subscription(ri),
 				Check: resource.ComposeTestCheckFunc(
-					testCheckAzureBlueprintExists("azurerm_blueprint.test_subscription"),
+					testCheckAzureRMBlueprintExists(subscriptionResourceName),
+					resource.TestCheckResourceAttr(subscriptionResourceName, "name", fmt.Sprintf("acctestbp-sub-%d", ri)),
+					// Check the computed values are back correctly
+					testCheckAzureRMBlueprintPropertiesStatusSet(subscriptionResourceName),
 				),
 			},
 			// Following test should have target_scope as `managementGroup` but fails an enum check in the API despite being in the spec
@@ -29,14 +35,38 @@ func TestAccAzureRMBlueprint_basic(t *testing.T) {
 			{
 				Config: testAccAzureRMBlueprint_basic_managementGroup(ri),
 				Check: resource.ComposeTestCheckFunc(
-					testCheckAzureBlueprintExists("azurerm_blueprint.test_managementGroup"),
+					testCheckAzureRMBlueprintExists(managementGroupResourceName),
+					resource.TestCheckResourceAttr(managementGroupResourceName, "name", fmt.Sprintf("acctestbp-mg-%d", ri)),
+					// Check the computed values are back correctly
+					testCheckAzureRMBlueprintPropertiesStatusSet(managementGroupResourceName),
 				),
 			},
 		},
 	})
 }
 
-func testCheckAzureBlueprintDestroy(s *terraform.State) error {
+func TestAccAzureRMBlueprint_fullParameters(t *testing.T) {
+	resourceName := "azurerm_blueprint.test_parameters"
+	ri := tf.AccRandTimeInt()
+	config := testAccAzureRMBlueprint_fullProperties(ri)
+	resource.ParallelTest(t, resource.TestCase{
+		PreCheck: func() {testAccPreCheck(t)},
+		Providers: testAccProviders,
+		CheckDestroy: testCheckAzureRMBlueprintDestroy,
+		Steps: []resource.TestStep{
+			{
+				Config: config,
+				Check: resource.ComposeTestCheckFunc(
+					testCheckAzureRMBlueprintExists(resourceName),
+					testCheckAzureRMBlueprintPropertiesParameters(resourceName, 1),
+					testCheckAzureRMBlueprintPropertiesResourceGroups(resourceName, 1),
+					),
+			},
+		},
+	})
+}
+
+func testCheckAzureRMBlueprintDestroy(s *terraform.State) error {
 	conn := testAccProvider.Meta().(*ArmClient).Blueprint.BlueprintsClient
 	ctx := testAccProvider.Meta().(*ArmClient).StopContext
 
@@ -58,7 +88,7 @@ func testCheckAzureBlueprintDestroy(s *terraform.State) error {
 	return nil
 }
 
-func testCheckAzureBlueprintExists(resourceName string) resource.TestCheckFunc {
+func testCheckAzureRMBlueprintExists(resourceName string) resource.TestCheckFunc {
 	return func(s *terraform.State) error {
 		rs, ok := s.RootModule().Resources[resourceName]
 		if !ok {
@@ -77,12 +107,87 @@ func testCheckAzureBlueprintExists(resourceName string) resource.TestCheckFunc {
 			return fmt.Errorf("Bad: Get on blueprintClient: %+v", err)
 		}
 
-		if resp.Response.Response.StatusCode == http.StatusNotFound {
+		if resp.StatusCode == http.StatusNotFound {
 			return fmt.Errorf("Bad: blueprint %q (scope: %q) does not exist", name, scope)
 		}
 		return nil
 	}
 
+}
+
+func testCheckAzureRMBlueprintPropertiesStatusSet(resourceName string) resource.TestCheckFunc {
+	return func(s *terraform.State) error{
+
+		resp, err := testGetAzureRMBlueprint(s, resourceName)
+		if err != nil {
+			return err
+		}
+
+		created := resp.Status.TimeCreated
+		lastModified := resp.Status.LastModified
+		if created == nil || lastModified == nil {
+			return fmt.Errorf("Bad: Computed values for blueprint %q status not found", resourceName)
+		}
+
+		return nil
+	}
+}
+
+func testCheckAzureRMBlueprintPropertiesResourceGroups(resourceName string, groupCount int) resource.TestCheckFunc {
+	return func(s *terraform.State) error {
+
+		resp, err := testGetAzureRMBlueprint(s, resourceName)
+		if err != nil {
+			return err
+		}
+
+		if len(resp.ResourceGroups) != groupCount {
+			return fmt.Errorf("Bad: Resource group count should have been %v, got %v", groupCount, len(resp.ResourceGroups))
+		}
+
+		return nil
+	}
+}
+
+func testCheckAzureRMBlueprintPropertiesParameters(resourceName string, paramCount int) resource.TestCheckFunc {
+	return func(s *terraform.State) error {
+
+		resp, err := testGetAzureRMBlueprint(s, resourceName)
+		if err != nil {
+			return err
+		}
+
+		if len(resp.Parameters) != paramCount {
+			return fmt.Errorf("Bad: Resource group count should have been %v, got %v", paramCount, len(resp.Parameters))
+		}
+
+		return nil
+	}
+}
+
+func testGetAzureRMBlueprint(s *terraform.State, resourceName string) (result *blueprint.Model, err error){
+	rs, ok := s.RootModule().Resources[resourceName]
+	if !ok {
+		return nil, fmt.Errorf("Not found: %s", resourceName)
+	}
+
+	name := rs.Primary.Attributes["name"]
+	scope := rs.Primary.Attributes["scope"]
+
+	client := testAccProvider.Meta().(*ArmClient).Blueprint.BlueprintsClient
+	ctx := testAccProvider.Meta().(*ArmClient).StopContext
+
+	bp, err := client.Get(ctx, scope, name)
+
+	if err != nil {
+		return nil, fmt.Errorf("Bad: Get on blueprintClient: %+v", err)
+	}
+
+	if bp.StatusCode == http.StatusNotFound {
+		return nil, fmt.Errorf("Bad: Blueprint %q not found in scope %q", name, scope)
+	}
+
+	return &bp, err
 }
 
 func testAccAzureRMBlueprint_basic_subscription(ri int) string {
@@ -115,6 +220,40 @@ resource "azurerm_blueprint" "test_managementGroup" {
    display_name = "accTest blueprint"
    target_scope = "subscription"
  }
+}
+`, ri, ri)
+}
+
+func testAccAzureRMBlueprint_fullProperties(ri int) string {
+	return fmt.Sprintf(`
+data "azurerm_client_config" "test" {}
+
+resource "azurerm_blueprint" "test_parameters" {
+  name  = "acctestbp-sub-%d"
+  scope = join("",["/subscriptions/",data.azurerm_client_config.test.subscription_id])
+  type  = "Microsoft.Blueprint/blueprints"
+  properties {
+    description  = "accTest blueprint %d"
+    display_name = "accTest blueprint"
+    target_scope = "subscription"
+	resource_groups {
+      name         = "accTest-rg"
+      location     = "westeurope"
+      display_name = "blueprints acceptance test resource group"
+      description  = "blueprints acceptance test resource group full description"
+	  tags         = {
+        accTest = "true"
+      }
+	}
+    parameters {
+	  name           = "accTest_Parameter"
+	  type           = "string"
+	  display_name   = "Acceptance Test parameter"
+	  description    = "Acceptance Test parameter full description"
+	  default_value  = "accTest"
+	  allowed_values = ["accTest", "accTest2"]
+	}
+  }
 }
 `, ri, ri)
 }
