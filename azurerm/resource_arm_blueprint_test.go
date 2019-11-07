@@ -14,7 +14,7 @@ import (
 func TestAccAzureRMBlueprint_basic(t *testing.T) {
 	ri := tf.AccRandTimeInt()
 	subscriptionResourceName := "azurerm_blueprint.test_subscription"
-	managementGroupResourceName := "azurerm_blueprint.test_subscription"
+	managementGroupResourceName := "azurerm_blueprint.test_managementGroup"
 
 	resource.ParallelTest(t, resource.TestCase{
 		PreCheck:     func() { testAccPreCheck(t) },
@@ -45,8 +45,8 @@ func TestAccAzureRMBlueprint_basic(t *testing.T) {
 	})
 }
 
-func TestAccAzureRMBlueprint_fullParameters(t *testing.T) {
-	resourceName := "azurerm_blueprint.test_parameters"
+func TestAccAzureRMBlueprint_fullProperties(t *testing.T) {
+	resourceName := "azurerm_blueprint.test_properties"
 	ri := tf.AccRandTimeInt()
 	config := testAccAzureRMBlueprint_fullProperties(ri)
 	resource.ParallelTest(t, resource.TestCase{
@@ -228,7 +228,7 @@ func testAccAzureRMBlueprint_fullProperties(ri int) string {
 	return fmt.Sprintf(`
 data "azurerm_client_config" "test" {}
 
-resource "azurerm_blueprint" "test_parameters" {
+resource "azurerm_blueprint" "test_properties" {
   name  = "acctestbp-sub-%d"
   scope = join("",["/subscriptions/",data.azurerm_client_config.test.subscription_id])
   type  = "Microsoft.Blueprint/blueprints"
