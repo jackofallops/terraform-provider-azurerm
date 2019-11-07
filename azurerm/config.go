@@ -96,8 +96,7 @@ type ArmClient struct {
 	Automation        *automation.Client
 	Authorization     *authorization.Client
 	Batch             *batch.Client
-	Blueprint		  *blueprint.BlueprintsClient
-	BlueprintArtifact *blueprint.ArtifactsClient
+	Blueprint		  *blueprint.Client
 	Bot               *bot.Client
 	Cdn               *cdn.Client
 	Cognitive         *cognitive.Client
