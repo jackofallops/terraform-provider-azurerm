@@ -28,8 +28,8 @@ func resourceArmBlueprint() *schema.Resource {
 				Required: true,
 			},
 			"scope": {
-				Type:     schema.TypeString,
-				Required: true,
+				Type:         schema.TypeString,
+				Required:     true,
 				ValidateFunc: validateBlueprintScope,
 			},
 			"properties": {
@@ -235,7 +235,7 @@ func expandBlueprintProperties(d *schema.ResourceData) *blueprint.Properties {
 
 	v := d.Get("properties")
 	props := v.(*schema.Set).List()
-	for key, _ := range props {
+	for key := range props {
 		prop := props[key].(map[string]interface{})
 		if displayName, ok := prop["display_name"].(string); ok {
 			ret.DisplayName = &displayName
@@ -299,7 +299,7 @@ func expandBlueprintPropertiesParameters(d *schema.ResourceData) map[string]*blu
 		defaultValue := param["default_value"].(interface{})
 
 		p := &blueprint.ParameterDefinition{
-			Type: paramType,
+			Type:         paramType,
 			DefaultValue: defaultValue,
 		}
 		p.ParameterDefinitionMetadata = paramMeta
@@ -330,9 +330,8 @@ func expandBlueprintPropertiesResourceGroups(d *schema.ResourceData) map[string]
 
 		//tagsRaw := resourceGroup["tags"].(map[string]interface{})
 
-
 		rg := &blueprint.ResourceGroupDefinition{
-			Name: &name,
+			Name:     &name,
 			Location: &location,
 			//Tags: tags,
 		}
@@ -401,20 +400,20 @@ func flattenBlueprintPropertiesResourceGroups(input map[string]*blueprint.Resour
 	return resourceGroups
 }
 
-func flattenBlueprintPropertiesStatus(input *blueprint.Status) *schema.Set{
+func flattenBlueprintPropertiesStatus(input *blueprint.Status) *schema.Set {
 	status := &schema.Set{
 		F: resourceArmBlueprintPropertiesStatusHash,
 	}
 	stat := make(map[string]interface{})
 
-	stat["last_modified"] =  input.LastModified.String()
+	stat["last_modified"] = input.LastModified.String()
 	stat["time_created"] = input.TimeCreated.String()
 	status.Add(stat)
 
 	return status
 }
 
-func flattenBlueprintPropertiesParameters(input map[string]*blueprint.ParameterDefinition) *schema.Set{
+func flattenBlueprintPropertiesParameters(input map[string]*blueprint.ParameterDefinition) *schema.Set {
 	parameters := &schema.Set{
 		F: resourceBlueprintPropertiesParametersHash,
 	}
@@ -503,10 +502,10 @@ func resourceArmBlueprintPropertiesResourceGroupHash(v interface{}) int {
 	var buf bytes.Buffer
 
 	if m, ok := v.(map[string]interface{}); ok {
-			buf.WriteString(fmt.Sprintf("%s-", m["name"]))
-			buf.WriteString(fmt.Sprintf("%s-", m["location"]))
-			buf.WriteString(fmt.Sprintf("%s-", m["display_name"]))
-			buf.WriteString(fmt.Sprintf("%s-", m["description"]))
+		buf.WriteString(fmt.Sprintf("%s-", m["name"]))
+		buf.WriteString(fmt.Sprintf("%s-", m["location"]))
+		buf.WriteString(fmt.Sprintf("%s-", m["display_name"]))
+		buf.WriteString(fmt.Sprintf("%s-", m["description"]))
 	}
 	return hashcode.String(buf.String())
 }

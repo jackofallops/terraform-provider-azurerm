@@ -50,8 +50,8 @@ func TestAccAzureRMBlueprint_fullParameters(t *testing.T) {
 	ri := tf.AccRandTimeInt()
 	config := testAccAzureRMBlueprint_fullProperties(ri)
 	resource.ParallelTest(t, resource.TestCase{
-		PreCheck: func() {testAccPreCheck(t)},
-		Providers: testAccProviders,
+		PreCheck:     func() { testAccPreCheck(t) },
+		Providers:    testAccProviders,
 		CheckDestroy: testCheckAzureRMBlueprintDestroy,
 		Steps: []resource.TestStep{
 			{
@@ -60,7 +60,7 @@ func TestAccAzureRMBlueprint_fullParameters(t *testing.T) {
 					testCheckAzureRMBlueprintExists(resourceName),
 					testCheckAzureRMBlueprintPropertiesParameters(resourceName, 1),
 					testCheckAzureRMBlueprintPropertiesResourceGroups(resourceName, 1),
-					),
+				),
 			},
 		},
 	})
@@ -116,7 +116,7 @@ func testCheckAzureRMBlueprintExists(resourceName string) resource.TestCheckFunc
 }
 
 func testCheckAzureRMBlueprintPropertiesStatusSet(resourceName string) resource.TestCheckFunc {
-	return func(s *terraform.State) error{
+	return func(s *terraform.State) error {
 
 		resp, err := testGetAzureRMBlueprint(s, resourceName)
 		if err != nil {
@@ -165,7 +165,7 @@ func testCheckAzureRMBlueprintPropertiesParameters(resourceName string, paramCou
 	}
 }
 
-func testGetAzureRMBlueprint(s *terraform.State, resourceName string) (result *blueprint.Model, err error){
+func testGetAzureRMBlueprint(s *terraform.State, resourceName string) (result *blueprint.Model, err error) {
 	rs, ok := s.RootModule().Resources[resourceName]
 	if !ok {
 		return nil, fmt.Errorf("Not found: %s", resourceName)
