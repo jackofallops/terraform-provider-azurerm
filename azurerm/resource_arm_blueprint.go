@@ -2,6 +2,7 @@ package azurerm
 
 import (
 	"bytes"
+	"encoding/base64"
 	"fmt"
 	"log"
 	"net/http"
@@ -70,6 +71,7 @@ func resourceArmBlueprint() *schema.Resource {
 										}, false),
 									},
 									"default_value": {
+										// experiment - receive b64 for all types
 										Type:     schema.TypeString,
 										Optional: true,
 									},
@@ -295,7 +297,18 @@ func expandBlueprintPropertiesParameters(d *schema.ResourceData) map[string]*blu
 		paramTypeRaw := param["type"].(string)
 		paramType := stringToTemplateParameterType(paramTypeRaw)
 
-		defaultValue := param["default_value"].(interface{})
+		defaultValueEncoded := param["default_value"].(string)
+		defaultValueDecoded, err := base64.StdEncoding.DecodeString(defaultValueEncoded)
+		if err != nil {
+			log.Printf("[DEBUG] error decoding default_value %q", err)
+		}
+		var defaultValue interface{}
+		switch paramType {
+		case "string":
+			defaultValue = string(defaultValueDecoded)
+		case "array":
+			defaultValue = decodeBlueprintParameterDefaultValueAsArray(defaultValueDecoded)
+		}
 		allowedValues := param["allowed_values"].([]interface{})
 
 		p := &blueprint.ParameterDefinition{
@@ -309,6 +322,12 @@ func expandBlueprintPropertiesParameters(d *schema.ResourceData) map[string]*blu
 	}
 
 	return blueprintParameters
+}
+
+func decodeBlueprintParameterDefaultValueAsArray(dv []byte) []string {
+	rawString := strings.Trim(string(dv), "[]")
+	values := strings.Split(rawString, ",")
+	return values
 }
 
 func expandBlueprintPropertiesResourceGroups(d *schema.ResourceData) map[string]*blueprint.ResourceGroupDefinition {
@@ -423,7 +442,12 @@ func flattenBlueprintPropertiesParameters(input map[string]*blueprint.ParameterD
 		param["name"] = name
 		param["display_name"] = parameter.DisplayName
 		param["type"] = parameter.Type
-		param["default_value"] = parameter.DefaultValue.(string)
+		switch templateParameterTypeToString(parameter.Type) {
+		case "string":
+			param["default_value"] = parameter.DefaultValue.(string)
+		case "array":
+			param["default_value"] = parameter.DefaultValue.([]interface{})
+		}
 		param["allowed_values"] = parameter.AllowedValues
 		param["description"] = parameter.Description
 

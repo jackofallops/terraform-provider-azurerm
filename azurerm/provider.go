@@ -217,6 +217,7 @@ func Provider() terraform.ResourceProvider {
 		"azurerm_bot_web_app":                                        resourceArmBotWebApp(),
 		"azurerm_batch_pool":                                         resourceArmBatchPool(),
 		"azurerm_blueprint":                                          resourceArmBlueprint(),
+		"azurerm_blueprint_policy_assignment_artifact":               resourceArmBlueprintPolicyAssignmentArtifact(),
 		"azurerm_cdn_endpoint":                                       resourceArmCdnEndpoint(),
 		"azurerm_cdn_profile":                                        resourceArmCdnProfile(),
 		"azurerm_cognitive_account":                                  resourceArmCognitiveAccount(),

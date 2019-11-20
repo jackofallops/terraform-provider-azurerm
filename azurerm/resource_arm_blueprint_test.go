@@ -247,7 +247,7 @@ resource "azurerm_blueprint" "test_properties" {
 	  type           = "string"
 	  display_name   = "Acceptance Test parameter"
 	  description    = "Acceptance Test parameter full description"
-	  default_value  = "accTest"
+	  default_value  = base64encode("accTest")
 	  allowed_values = ["accTest", "accTest2"]
 	}
   }
